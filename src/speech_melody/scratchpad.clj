@@ -87,3 +87,91 @@
 
   (spectrogram :bus my-bus)
   )
+
+;[incanter "1.5.6"]
+
+;(ns speech-melody.generator
+;  (:require [clj-http.client :as client]
+;            [clojure.java.io :as io]
+;            [overtone.studio.scope :refer [scope pscope spectrogram bus-freqs->buf]]
+;            [incanter.core :refer [view]]
+;            [incanter.charts :refer [xy-plot function-plot add-function]])
+;  (:import [javax.sound.sampled AudioSystem AudioFormat AudioFormat$Encoding AudioFileFormat$Type AudioInputStream]
+;           [java.io File]
+;           [comirva.audio.util MFCC AudioPreProcessor]
+;           [speech_melody.java VorbisEncoder]))
+
+(comment
+  (defn- audio->wav [input output]
+    "Based on http://stackoverflow.com/a/14144956"
+    (let [convert-format (fn [source-ais] (let [source-format (.getFormat source-ais)
+                                                sample-rate (.getSampleRate source-format)
+                                                channels (.getChannels source-format)]
+                                            (AudioFormat. AudioFormat$Encoding/PCM_SIGNED
+                                                          sample-rate 16 channels
+                                                          (* 2 channels) sample-rate false)))]
+      (with-open [source-ais (AudioSystem/getAudioInputStream input)
+                  convert-ais (AudioSystem/getAudioInputStream (convert-format source-ais)
+                                                               source-ais)]
+        (AudioSystem/write convert-ais AudioFileFormat$Type/WAVE output))))
+  )
+
+;(comment
+; (audio->wav temp-mp3 temp-wav)
+;  )
+;(if windows
+;  (def temp-wav (io/file "C:\\Users\\Pawel.Stroinski\\AppData\\Local\\Temp\\speech531472945742561508.wav"))
+;  (def temp-wav (io/file "/var/folders/tg/q99chw2971v_rnzk9v6mpv100000gn/T/speech7680402333751887892.wav")))
+
+(comment
+  (def speech (load-sample (.getAbsolutePath temp-wav)))
+  (def speech-rate (buf-rate-scale speech))
+  )
+
+(comment
+  (view (xy-plot (range (count mfccs)) (map (partial apply +) mfccs)))
+  (println (apply min (map (partial apply min) mfccs))
+           (apply max (map (partial apply max) mfccs)))
+  (defn- plot
+    ([from]
+     (plot from 1))
+    ([from cnt]
+     (let [to (+ from (dec cnt))
+           len (dec (count mfccs))
+           fp (function-plot #(nth (nth mfccs %) from) 0 len
+                             :legend true :title (str from "-" to))]
+       (doseq [i (range (inc from) (inc to))]
+         (add-function fp #(nth (nth mfccs %) i) 0 len))
+       (view fp))))
+  (def PLOT-COUNT 1)
+  (def plot-step (quot NUMBER-OF-COEFFICIENTS PLOT-COUNT))
+  (doseq [i (range PLOT-COUNT)]
+    (let [add (if (= i (dec PLOT-COUNT))
+                (rem NUMBER-OF-COEFFICIENTS PLOT-COUNT)
+                0)]
+      (plot (* i plot-step) (+ plot-step add))))
+  )
+
+(comment
+  (defn- speak []
+    [{:time (/ ((comp :time last melody)) 2), :duration 1, :part :speak}])
+  )
+
+(comment
+  (definst speaker []
+           (let [src (play-buf 1 speech speech-rate)
+                 freq (concat (range 900 0 -100) (range 50 0 -5))
+                 mul (range 0.05 1.0 0.05)
+                 osc (map #(* src (sin-osc %1) %2) freq mul)
+                 synth (+ (apply + osc) (* 10 (bpf src 100)))]
+             [synth synth]))
+  )
+
+(comment
+  (defmethod live/play-note :speak [{}]
+    (speaker))
+  )
+
+(comment (live/stop))
+
+; (sort-by :time (concat (piano) (melody) (speak)))

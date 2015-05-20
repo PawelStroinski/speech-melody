@@ -6,7 +6,6 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [overtone "0.9.1"]
                  [clj-http "1.1.1"]
-                 [incanter "1.5.6"]
                  [leipzig "0.9.0"]
                  ]
   :main ^:skip-aot speech-melody.core
