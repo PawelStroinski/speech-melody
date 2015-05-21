@@ -67,6 +67,13 @@
 (defmethod live/play-note :piano [{midi :pitch}]
   (sampled-piano midi))
 
+(defn- play [mfccs]
+  (->>
+    (sort-by :time (concat (piano mfccs) (melody mfccs)))
+    (tempo (bpm 40))
+    (where :pitch (comp scale/D scale/blues))
+    live/play))
+
 (defn- drop-seconds! [input-ais seconds]
   (let [format (.getFormat input-ais)
         frame-size (.getFrameSize format)
@@ -88,11 +95,7 @@
         _ (download (make-url text lang) temp-mp3)
         mfccs (preprocess-mfccs (audio->mfccs temp-mp3 NUMBER-OF-COEFFICIENTS))]
     (recording-start temp-wav)
-    @(->>
-       (sort-by :time (concat (piano mfccs) (melody mfccs)))
-       (tempo (bpm 40))
-       (where :pitch (comp scale/D scale/blues))
-       live/play)
+    @(play mfccs)
     (Thread/sleep (* 5 1000))
     (recording-stop)
     (postprocess-audio temp-wav temp-ogg (str text " (" lang ")"))
