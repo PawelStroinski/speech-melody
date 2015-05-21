@@ -4,7 +4,8 @@
   (:import [javax.sound.sampled AudioSystem]
            [java.io File]
            [comirva.audio.util MFCC AudioPreProcessor]
-           [speech_melody.java VorbisEncoder]))
+           [speech_melody.java VorbisEncoder]
+           [javaFlacEncoder FLACFileWriter]))
 
 (def use-external-server (= (System/getProperty "os.name") "Windows 7"))
 
@@ -82,23 +83,29 @@
         drop-bytes (* seconds bytes-per-second)]
     (.skip input-ais drop-bytes)))
 
-(defn- postprocess-audio [input output title]
-  (with-open [input-ais (AudioSystem/getAudioInputStream input)]
-    (let [frame-rate (int (.. input-ais getFormat getFrameRate))]
-      (drop-seconds! input-ais 1.45)
-      (VorbisEncoder/encode input-ais output frame-rate title "speech-melody"))))
+(defmulti encode (fn [format & _] format))
+(defmethod encode :ogg [_ input-ais output title]
+  (let [frame-rate (int (.. input-ais getFormat getFrameRate))]
+    (VorbisEncoder/encode input-ais output frame-rate title "speech-melody")))
+(defmethod encode :flac [_ input-ais output _]
+  (AudioSystem/write input-ais FLACFileWriter/FLAC output))
 
-(defn generate [text lang]
+(defn postprocess-audio [input output text lang format]
+  (with-open [input-ais (AudioSystem/getAudioInputStream input)]
+    (drop-seconds! input-ais 1.45)
+    (encode format input-ais output (str text " (" lang ")"))))
+
+(defn generate [text lang format]
   (let [temp-mp3 (File/createTempFile "speech" ".mp3")
         temp-wav (File/createTempFile "speech" ".wav")
-        temp-ogg (File/createTempFile "speech" ".ogg")
+        temp-out (File/createTempFile "speech" (str "." (name format)))
         _ (download (make-url text lang) temp-mp3)
         mfccs (preprocess-mfccs (audio->mfccs temp-mp3 NUMBER-OF-COEFFICIENTS))]
     (recording-start temp-wav)
     @(play mfccs)
     (Thread/sleep (* 5 1000))
     (recording-stop)
-    (postprocess-audio temp-wav temp-ogg (str text " (" lang ")"))
+    (postprocess-audio temp-wav temp-out text lang format)
     (.delete temp-mp3)
     (.delete temp-wav)
-    temp-ogg))
+    temp-out))

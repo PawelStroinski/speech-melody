@@ -4,4 +4,4 @@
             [speech-melody.generator :refer [generate]])
   (:import [java.io File]))
 
-(println "Written to" (generate "Hello World" "en-us"))
+(println "Written to" (generate "Hello World" "en-us" :flac))
