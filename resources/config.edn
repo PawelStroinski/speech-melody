@@ -1,0 +1,6 @@
+{:soundcloud {:client-id     "nottelling"
+              :client-secret "topsecret"
+              :username      "mysterious"
+              :password      "guess"
+              }
+ }

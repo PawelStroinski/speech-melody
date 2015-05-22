@@ -7,10 +7,12 @@
                  [overtone "0.9.1"]
                  [clj-http "1.1.1"]
                  [leipzig "0.9.0"]
+                 [com.soundcloud/java-api-wrapper "1.3.1"]
+                 [robert/bruce "0.7.1"]
                  ]
   :main ^:skip-aot speech-melody.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
   :java-source-paths ["src/speech_melody/java"]
-  :resource-paths ["resources/*" "resources/vorbis-java-1.0.0-beta.jar"]
+  :resource-paths ["resources/*" "resources/vorbis-java-1.0.0-beta.jar" "resources"]
   :repl-options {:timeout 3600000})
