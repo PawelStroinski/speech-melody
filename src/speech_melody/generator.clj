@@ -7,7 +7,7 @@
            [speech_melody.java VorbisEncoder]
            [javaFlacEncoder FLACFileWriter]))
 
-(def use-external-server (= (System/getProperty "os.name") "Windows 7"))
+(def #^{:private true} use-external-server (= (System/getProperty "os.name") "Windows 7"))
 
 (if use-external-server
   (do
@@ -37,22 +37,18 @@
         mfcc-gen (MFCC. audio-sample-rate 128 (inc number-of-coefficients) false)]
     (map seq (.process mfcc-gen pre))))
 
-(def NUMBER-OF-COEFFICIENTS 3)
-
 (defn- preprocess-mfccs [input]
   (let [drop-zero (partial drop-while (partial every? zero?))]
     (->> input drop-zero reverse drop-zero reverse)))
 
-(defn- melody [mfccs]
+(defn- melody [mfccs number-of-coefficients]
   (flatten
-    (for [i (range NUMBER-OF-COEFFICIENTS)]
+    (for [i (range number-of-coefficients)]
       (map-indexed (fn [idx itm] (-> {:pitch (* i 4), :time (/ idx 16), :duration (/ itm 500)}))
                    (map #(nth % i) mfccs)))))
 
-(def PIANO-GROUP 5)
-
-(defn- piano [mfccs]
-  (let [averages (fn [coll] (map #(/ (apply + %) PIANO-GROUP) (partition PIANO-GROUP coll)))]
+(defn- piano [mfccs piano-group]
+  (let [averages (fn [coll] (map #(/ (apply + %) piano-group) (partition piano-group coll)))]
     (->> (phrase (map #(/ (Math/abs %) 50) (averages (map last mfccs)))
                  (averages (map second mfccs)))
          (all :part :piano))))
@@ -68,9 +64,9 @@
 (defmethod live/play-note :piano [{midi :pitch}]
   (sampled-piano midi))
 
-(defn- play [mfccs]
+(defn- play [mfccs number-of-coefficients piano-group]
   (->>
-    (sort-by :time (concat (piano mfccs) (melody mfccs)))
+    (sort-by :time (concat (piano mfccs piano-group) (melody mfccs number-of-coefficients)))
     (tempo (bpm 40))
     (where :pitch (comp scale/D scale/blues))
     live/play))
@@ -83,29 +79,31 @@
         drop-bytes (* seconds bytes-per-second)]
     (.skip input-ais drop-bytes)))
 
-(defmulti encode (fn [format & _] format))
-(defmethod encode :ogg [_ input-ais output title]
+(defmulti #^{:private true} encode (fn [format & _] format))
+(defmethod encode :ogg [_ input-ais output title author]
   (let [frame-rate (int (.. input-ais getFormat getFrameRate))]
-    (VorbisEncoder/encode input-ais output frame-rate title "speech-melody")))
-(defmethod encode :flac [_ input-ais output _]
+    (VorbisEncoder/encode input-ais output frame-rate title author)))
+(defmethod encode :flac [_ input-ais output _ _]
   (AudioSystem/write input-ais FLACFileWriter/FLAC output))
 
-(defn postprocess-audio [input output text lang format]
+(defn- postprocess-audio [input output format title author]
   (with-open [input-ais (AudioSystem/getAudioInputStream input)]
     (drop-seconds! input-ais 1.45)
-    (encode format input-ais output (str text " (" lang ")"))))
+    (encode format input-ais output title author)))
 
-(defn generate [text lang format]
-  (let [temp-mp3 (File/createTempFile "speech" ".mp3")
+(defn generate [text lang format title author]
+  (let [number-of-coefficients 3
+        piano-group 5
+        temp-mp3 (File/createTempFile "speech" ".mp3")
         temp-wav (File/createTempFile "speech" ".wav")
         temp-out (File/createTempFile "speech" (str "." (name format)))
         _ (download (make-url text lang) temp-mp3)
-        mfccs (preprocess-mfccs (audio->mfccs temp-mp3 NUMBER-OF-COEFFICIENTS))]
+        mfccs (preprocess-mfccs (audio->mfccs temp-mp3 number-of-coefficients))]
     (recording-start temp-wav)
-    @(play mfccs)
+    @(play mfccs number-of-coefficients piano-group)
     (Thread/sleep (* 5 1000))
     (recording-stop)
-    (postprocess-audio temp-wav temp-out text lang format)
+    (postprocess-audio temp-wav temp-out format title author)
     (.delete temp-mp3)
     (.delete temp-wav)
     temp-out))
