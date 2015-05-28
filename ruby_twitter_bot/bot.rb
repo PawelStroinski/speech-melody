@@ -9,6 +9,7 @@ require 'retryable'
 require 'edn'
 
 store = YAML::Store.new('bot.yaml')
+retryable_options = {:tries => 15, :sleep => lambda { |n| 2 ** (n + 1) }}
 
 client = Twitter::REST::Client.new do |config|
   store.transaction do
@@ -21,23 +22,36 @@ end
 
 connection = Bunny.new
 connection.start
-input_channel = connection.create_channel
-input_queue = input_channel.queue('speech-melody.input', :durable => true)
-input_channel.confirm_select
 
+done_channel = connection.create_channel
+done_queue = done_channel.queue('speech-melody.done', :durable => true)
+puts " <*> Waiting for messages in #{done_queue.name}"
+done_queue.subscribe(:manual_ack => true) do |delivery_info, properties, body|
+  puts " <x> Received #{body}"
+  msg = EDN.read(body)
+  tweet = Retryable.retryable(retryable_options) do
+    client.update("Hey @#{msg[:user]}! Here you go, #{msg[:url]}", :in_reply_to_status_id => msg[:id])
+  end
+  puts " <x> Tweeted '#{tweet.text}' that has id = #{tweet.id}"
+  done_channel.ack(delivery_info.delivery_tag)
+end
+
+todo_channel = connection.create_channel
+todo_queue = todo_channel.queue('speech-melody.todo', :durable => true)
+todo_channel.confirm_select
 handle, since_id = store.transaction { [store[:handle], store.fetch(:since_id, 1)] }
 loop do
-  puts " [*] Fetching with since_id = #{since_id}"
-  tweets = Retryable.retryable(:tries => 15, :sleep => lambda { |n| 2 ** (n + 1) }) do
+  puts " [*] Fetching Twitter with since_id = #{since_id}"
+  tweets = Retryable.retryable(retryable_options) do
     client.mentions_timeline(:since_id => since_id, :count => 200).sort_by { |tweet| tweet.id }
   end
   tweets.each do |tweet|
-    text = tweet.text.sub(handle, '').lstrip
+    text = tweet.text.sub(/#{Regexp.escape(handle)}/i, '').gsub(/ +/, ' ').strip
     msg = { :id => tweet.id, :user => tweet.user.screen_name, :text => text }.to_edn
-    input_queue.publish(msg, :persistent => true)
-    success = input_channel.wait_for_confirms
+    todo_queue.publish(msg, :persistent => true)
+    success = todo_channel.wait_for_confirms
     if success
-      puts " [x] Sent #{msg}"
+      puts " [x] Sent #{msg} to #{todo_queue.name}"
     else
       puts " [ ] Message nacked, will retry (#{msg})"
       break
