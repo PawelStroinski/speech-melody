@@ -1,4 +1,10 @@
-{:soundcloud {:client-id     "nottelling"
+{:metadata   {:author      "speech-melody"
+              :tags        "Blues Classical Electronic Speech"
+              :description "some description"
+              :format      :flac
+              }
+ :upload-to  :soundcloud
+ :soundcloud {:client-id     "nottelling"
               :client-secret "topsecret"
               :username      "mysterious"
               :password      "guess"
