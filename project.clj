@@ -9,6 +9,7 @@
                  [leipzig "0.9.0"]
                  [com.soundcloud/java-api-wrapper "1.3.1"]
                  [robert/bruce "0.7.1"]
+                 [org.clojure/data.json "0.2.6"]
                  ]
   :main ^:skip-aot speech-melody.core
   :target-path "target/%s"

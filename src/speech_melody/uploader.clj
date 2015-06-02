@@ -34,10 +34,8 @@
       (println "Processing" uri)
       (throw (ex-info "Still processing" {:uri uri})))))
 
-(defmethod upload :soundcloud [input metadata config]
-  (let [cfg (:soundcloud config)
-        wrapper (ApiWrapper. (:client-id cfg) (:client-secret cfg) nil nil)
-        try-options {:sleep 1000, :decay :double, :tries 15} ; about 136 mins max and 273 mins total
+(defmethod upload :soundcloud [input metadata {cfg :soundcloud, :keys [try-options]}]
+  (let [wrapper (ApiWrapper. (:client-id cfg) (:client-secret cfg) nil nil)
         json (try-try-again try-options upload-to-soundcloud input metadata cfg wrapper)]
     (Thread/sleep 5000)
     (try-try-again try-options ensure-soundcloud-has-finished-processing (.get json "uri") wrapper)

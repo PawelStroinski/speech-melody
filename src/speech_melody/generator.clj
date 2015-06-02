@@ -5,7 +5,7 @@
            [speech_melody.java VorbisEncoder]
            [javaFlacEncoder FLACFileWriter]))
 
-(def #^{:private true} use-external-server (= (System/getProperty "os.name") "Windows 7"))
+(def ^{:private true} use-external-server (= (System/getProperty "os.name") "Windows 7"))
 
 (if use-external-server
   (do
@@ -66,7 +66,7 @@
         drop-bytes (* seconds bytes-per-second)]
     (.skip input-ais drop-bytes)))
 
-(defmulti #^{:private true} encode (fn [_ _ {:keys [format]}] format))
+(defmulti ^{:private true} encode (fn [_ _ {:keys [format]}] format))
 (defmethod encode :ogg [input-ais output {:keys [title author]}]
   (let [frame-rate (int (.. input-ais getFormat getFrameRate))]
     (VorbisEncoder/encode input-ais output frame-rate title author)))
