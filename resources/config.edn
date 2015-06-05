@@ -29,5 +29,10 @@
                        "zh-CN" "zh-HK" "zh-MO" "zh-SG" "zh-TW"}
  :default-language   "en-US"
  :default-english    "en-US"
- :try-options        {:sleep 1000, :decay :double, :tries 15} ; about 136 mins max and 273 mins total
+ :try-options        {:sleep 1000
+                      :decay :double
+                      :tries 15}                            ; about 136 mins max and 273 mins total
+ :todo-queue         "speech-melody.todo"
+ :done-queue         "speech-melody.done"
+ :max-len            100                                    ; the tts api doesn't accept longer text
  }
