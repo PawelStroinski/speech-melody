@@ -13,6 +13,7 @@
                  [com.novemberain/langohr "3.2.0"]
                  [log4j/log4j "1.2.17"]
                  [org.clojure/tools.logging "0.3.1"]
+                 [green-tags "0.3.0-alpha"]
                  ]
   :main ^:skip-aot speech-melody.core
   :target-path "target/%s"

@@ -1,4 +1,5 @@
 (ns speech-melody.generator
+  (:require [green-tags.core :as gt])
   (:import [javax.sound.sampled AudioSystem]
            [java.io File]
            [comirva.audio.util MFCC AudioPreProcessor]
@@ -70,8 +71,9 @@
 (defmethod encode :ogg [input-ais output {:keys [title author]}]
   (let [frame-rate (int (.. input-ais getFormat getFrameRate))]
     (VorbisEncoder/encode input-ais output frame-rate title author)))
-(defmethod encode :flac [input-ais output _]
-  (AudioSystem/write input-ais FLACFileWriter/FLAC output))
+(defmethod encode :flac [input-ais output {:keys [title author]}]
+  (AudioSystem/write input-ais FLACFileWriter/FLAC output)
+  (gt/update-tag! output {:title title, :artist author}))
 
 (defn- postprocess-audio [input output metadata]
   (with-open [input-ais (AudioSystem/getAudioInputStream input)]
