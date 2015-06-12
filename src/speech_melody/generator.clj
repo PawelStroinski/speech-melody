@@ -6,12 +6,12 @@
            [speech_melody.java VorbisEncoder]
            [javaFlacEncoder FLACFileWriter]))
 
-(def ^{:private true} use-external-server (= (System/getProperty "os.name") "Windows 7"))
+(def ^{:private true} use-external-server (= (System/getProperty "os.name") "Linux"))
 
 (if use-external-server
   (do
     (require '[overtone.core :refer :all])
-    (eval '(defonce boot (overtone.sc.server/boot-external-server))))
+    (eval '(defonce boot (overtone.sc.server/connect-external-server 57110))))
   (require '[overtone.live :refer :all]))
 (require '[leipzig.live :as live]
          '[leipzig.scale :as scale]
