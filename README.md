@@ -31,13 +31,19 @@ This is the complete installation procedure from the vanilla Ubuntu 15.04 x64 bo
     apt-get install upstart
     apt-get install upstart-sysv
     reboot
-    #now copy & extract or checkout speech-melody in /usr/local/speech-melody dir
+    #now copy & extract or checkout speech-melody in /usr/local/speech-melody dir, update config in resources/config.edn & ruby_twitter_bot/bot.yaml
     mv install/speech-melody.conf /etc/init
     mv install/speech-melody-bot.conf /etc/init
     start speech-melody
     start speech-melody-bot
     #to view logs: cat /var/log/upstart/speech-melody.log and cat /var/log/upstart/speech-melody-bot.log
     #also cat /usr/local/speech-melody/speech-melody.log and cat /usr/local/speech-melody/ruby_twitter_bot/ruby_twitter_bot.log
+
+## MQ
+
+This bot uses RabbitMQ as shown below. The reverse route is not pictured, but similar.
+
+![The arrows from t to MQ to worker. ACK from worker back to MQ.](https://raw.githubusercontent.com/PawelStroinski/speech-melody/master/images/mq.png)
 
 ## Credits
 
