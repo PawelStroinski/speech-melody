@@ -47,13 +47,24 @@ todo_channel = connection.create_channel
 todo_queue = todo_channel.queue('speech-melody.todo', :durable => true)
 todo_channel.confirm_select
 handle, since_id = store.transaction { [store[:handle], store.fetch(:since_id, 1)] }
+set_since_id = lambda do |id|
+  since_id = id
+  store.transaction { store[:since_id] = since_id }
+  log " [*] Set since_id = #{since_id}"
+end
 loop do
   log " [*] Fetching Twitter with since_id = #{since_id}"
   tweets = Retryable.retryable(retryable_options) do
     client.mentions_timeline(:since_id => since_id, :count => 200).sort_by { |tweet| tweet.id }
   end
   tweets.each do |tweet|
-    text = tweet.text.sub(/#{Regexp.escape(handle)}/i, '').gsub(/ +/, ' ').strip
+    contains_url = tweet.text =~ /https?:\/\//i
+    if contains_url
+      log " [*] Ignoring this tweet (#{tweet.text}) as it contains an URL"
+      set_since_id.call(tweet.id)
+      next
+    end
+    text = tweet.text.sub(/#{Regexp.escape(handle)}/i, '').sub(/^\s*[,\-:]+/, '').gsub(/ +/, ' ').strip
     msg = { :id => tweet.id, :user => tweet.user.screen_name, :text => text }.to_edn
     todo_queue.publish(msg, :persistent => true)
     success = todo_channel.wait_for_confirms
@@ -63,9 +74,7 @@ loop do
       log " [ ] Message nacked, will retry (#{msg})"
       break
     end
-    since_id = tweet.id
-    store.transaction { store[:since_id] = since_id }
-    log " [*] Set since_id = #{since_id}"
+    set_since_id.call(tweet.id)
   end
   sleep 65
 end
