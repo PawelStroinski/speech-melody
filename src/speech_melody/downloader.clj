@@ -13,7 +13,8 @@
 
 (defn- make-url [text lang]
   (str "http://translate.google.com/translate_tts?ie=UTF-8&"
-       (client/generate-query-string {"q" text, "tl" lang})))
+       (client/generate-query-string {"q" text, "tl" lang})
+       "&client=t"))
 
 (defn download [{:keys [text lang]} {:keys [try-options]}]
   (let [temp-mp3 (File/createTempFile "speech" ".mp3")]
